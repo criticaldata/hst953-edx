@@ -1,0 +1,407 @@
+---
+title: 'HST.953 EdX Workshop: Exploratory Data Analysis'
+author: "Your Name Here"
+date: "January 1, 1900"
+output:
+  html_document:
+    fig_height: 8
+    fig_width: 10
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Instructions:
+
+**Before beginning**, please test to see if the Rmd file will compile on your system by clicking the "Knit to HTML" button in R studio above. If it does not compile, seek out help in the forum or online. Chances are, you are missing a component necessary to have `rmarkdown` compile on your system. We would be very interested in: 1) What was wrong?, 2) How you fixed it?, and 3) What resources did you use? This will help us improve future workshops.
+
+**How This Workshop Works**: There is some text, followed by relevant examples with code and output, followed by some *student questions*. The intention is for students to complete the student questions, which will provide answers to the multiple choice assessment for this subsection of the course that can be entered into EdX. The goal is to provide you with a solid foundation in some concepts related to `R`, `rmarkdown`, and exploratory data analysis.
+
+*To complete the workshop, fill in necessary code in the places indicated with* `# Students: Insert your code here`. Use the output from "Knit to HTML" to answer the multiple choice questions in EdX to receive credit for completing the workshop.
+
+
+
+# Principles of Exploratory Data Analysis (EDA)
+
+EDA's goal is to better understand the data and the process by which it was 
+generated. 
+
+Within statistics, it is largely considered separate from inferential/confirmatory statistics (e.g., hypothesis testing, point and interval estimates, etc), where EDA has a very diverse and important set of goals:
+
+- Provide an opportunity to do additional data cleaning.
+- Understand how the data is generated, and what the relationships between variables may be.
+- Suggest questions and hypotheses that can be subsequently answered and tested.
+- Identify what statistical methods may be most appropriate for the data to follow up with these questions and hypotheses.
+
+EDA was coined, developed and advocated for by John Tukey. His book, entitled _"Exploratory Data Analysis"_ was published in 1977, and is still in use today. It may seem like an oddity, but it was a fundamental change in how data science / statistics was done. Fundamentally he sums up EDA with this quote:
+
+_"It is important to understand what you CAN DO, before you learn to measure how WELL you seem to have DONE it."_
+_-- J. W. Tukey (1977)_
+
+If you don't understand the data, it becomes difficult to know how to analyze it. Confirmatory and exploratory analyses are not superior or inferior to one another, rather they are complementary. With all the tools available to do both, ignoring one of them is inexcusable.
+
+_"Today, exploratory and confirmatory (analysis) -- can -- and should -- proceed side by side."_
+_-- J. W. Tukey (1977)_
+
+
+## Cognitive Disfluency -- make it work for you?
+
+There is often an urge due to productivity, laziness, or other factors to plow through with an analysis, using sophisticated analysis techniques to find the results you are seeking. With the proliferation of large datasets, this can be quite ineffective, as it largely separates the analyst from the data, resulting in misunderstanding or not understanding the data at all.
+
+There is some evidence that *cognitive disfluency* (making it harder to learn) can lead to deeper learning. For analysts and data scientists this means slowing things down, often using basic (and sometimes tedious) methods to integrate the primary structure and relationships contained in the data, before pulling out the heavy machinery of modern data analysis.
+
+See: _Alter, A.L., 2013. The benefits of cognitive disfluency. Current Directions in Psychological Science, 22(6), pp.437-442._
+
+All too often the success/failure of an analysis is determined from a single number, when in reality, understanding the data should be the goal.
+
+
+
+# Prerequisites
+
+For this workshop we will use data from a study that examined the effect of indwelling arterial catheters (aka IAC or aline) on 28 day mortality in intensive care unit (ICU) patients on mechanical ventilation during the first day of ICU admission. The data originates from MIMIC II v2.6. The data is ready for exploratory data analysis (the data extraction and cleaning have already been completed), and contained in a comma separated value (.csv) file generated after this process and stored on Physionet. Start by loading the data file from Physionet into a data frame called `dat`:
+
+```{r}
+# If the following command does not work for you, please download the data file from Physionet at the URL below, run file.choose(), locate your downloaded CSV file, and replace read.csv(url) with read.csv("file_path") where file_path is the output from file.choose().
+url <- "http://physionet.org/physiobank/database/mimic2-iaccd/full_cohort_data.csv"
+dat <- read.csv(url)
+
+# Public dataset has NA values for variables required to complete workshop
+# Replace NA values with defaults since dataset only intended for teaching
+dat$gender_num[is.na(dat$gender_num)] <- 0
+dat$sofa_first[is.na(dat$sofa_first)] <- 0
+```
+
+It is very important you understand how to load CSV files, as often this is the easiest way to load the data when not using `bigrquery`. As noted in the code, using the `file.choose()` function can be useful for identifying the path to the CSV file. You should run it in the console.
+
+
+
+# Numerical Forms of EDA
+
+One form of EDA is to provide numerical summaries of the dataset. This can have many purposes:
+
+- To verify the dataset you loaded is the one you think you did.
+- To quantify characteristics of the dataset which need to be reported numerically.
+
+
+## The `summary` function in `R`
+
+`R` has a very handy function, which performs differently for depending on the type of data structures you apply it to. This is the `summary` function, and it provides a very useful data summary of data frames. This comes in the form of five-number summaries (plus the mean) (min-Q1-mean-median-Q3-max) for numeric data and counts for categorical (factor) data. Summary also works on many types of objects in `R`, and when you don't know what to do with an `R` object (`obj`), it is often good to try `summary(obj)`.
+
+```{r}
+summary(dat)
+```
+
+As you can see, this function is very verbose, but produces some useful output. At this point, it's also a good idea to verify the number of rows and columns are correct:
+
+```{r}
+nrow(dat)
+ncol(dat)
+```
+
+This should be what you're expecting (`1776` and `46`). If it's not, this could indicate a loading error, or a problem with the data extraction.
+
+As you will note, many of the `flg` variables listed in the summary output above, are constrained by 0 and 1. This is because they have a binary encoding (usually 1 if present, and 0 if not). Although not necessary in this particular instance, it is sometimes useful to encode these types of variables as factors. The function `convert.bin.fac` will do this, and we'll use it to create a new data frame called `dat2`, and call the summary function on the new data frame. We first need to load/install two packages (`devtools` and `MIMICbook`).
+
+```{r include=TRUE}
+if(!("devtools" %in% installed.packages()[,1])) {
+ install.packages("devtools",repos="https://cloud.r-project.org")
+}
+library(devtools)
+if(!("MIMICbook" %in% installed.packages()[,1])) {
+ install_github("jraffa/MIMICbook")
+}
+library(MIMICbook)
+```
+
+The `MIMICbook` package provides some useful functions written for the textbook that we will use throughout some of the workshops. It installs via GitHub.
+
+```{r}
+dat2 <- convert.bin.fac(dat)
+summary(dat2)
+```
+
+As you can now see, instead of means (which under the old encoding equate to proportions of patients where the variable == 1), now we have counts of patients with each *level* of the variable. This is because `R`'s summary function treats factors and numerical values differently.
+
+Often, you will want to report these summaries separately for different groups. For instance, is the mean or median age the same for those who received an IAC, and those who didn't? A multi-purpose function called `tapply` can help us with this.
+
+```{r}
+tapply(dat2$age,dat2$aline_flg,summary)
+```
+
+This function stratifies the first argument (`age`) by the second argument (`aline_flg`) and run the third argument (`summary`) on it. So, in our case, run the `summary` function on `age` for those who received an IAC (`aline_flg` = 1) and those who didn't (`aline_flg` = 0).
+
+### Student Question 1:
+
+> a) Using the `dat2` data frame, run the summary function for `sofa_first`, and `service_unit` separately for those with an IAC, and those without. 
+> b) Run the summary function for `age` `sofa_first`, and `service_unit` separately for those who died within 28 days, and those who survived.
+
+```{r}
+# Students: Insert your code here
+
+```
+
+
+## Producing a Table One and Other Tables
+ 
+The output from summary is very useful, but is generally not acceptable for formal research reports, let alone a published paper. There are several ways to produce a publication which has a better layout. One way is described in the textbook (Chapter 15). Another, which we will cover here, is through an `R` package called `tableone`. 
+
+As some of you may know, "Table 1" often refers to the table presented in most medical manuscripts which contains information used to describe the cohort. This typically includes information such as average patient age, gender distribution, and other important demographic, clinical, and socioeconomic characteristics. We will cover briefly how to use the `CreateTableOne` function in this package to generate a table which is closer to being publication worthy.
+
+The following code will install the `tableone` package and load it.
+
+```{r}
+ if(!("tableone" %in% installed.packages()[,1])) {
+ install.packages("tableone",repos="https://cloud.r-project.org")
+ }
+ library(tableone)
+```
+
+Here is an example functional call to `CreateTableOne`, which computes either the mean and standard deviation for numeric variables, or count and percentage for factors. You specify which variables you want to include in the table
+
+```{r}
+CreateTableOne(vars=c("age","service_unit","aline_flg","day_28_flg"),data=dat2)
+```
+
+We may want to breakdown these summaries further, like we did above with `tapply`, but we can do it with one function with the `CreateTableOne` function by passing the `strata` parameter. `strata` specifies which variable to stratify (breakdown) the others by. For example, here is the same table in the previous chunk, broken down by whether a patient received an IAC or not.
+ 
+```{r}
+CreateTableOne(vars=c("age","service_unit","aline_flg","day_28_flg"),strata="aline_flg",data=dat2,test=FALSE)
+```
+ 
+### Student Question 2:
+
+> a) Compute a Table to summarize those variable considered before (`age`, `service_unit`, `aline_flg` and `day_28_flg`) in addition to `gender_num` and `chf_flg`, but now stratify by survival at 28 days (`day_28_flg`).
+> b) Repeat part a), but now use the `dat` data frame instead of `dat2`. Note the differences in how variables that were previously recast as factors are summarized.
+
+```{r}
+# Students: Insert your code here
+
+```
+
+#### Optional:
+
+> As an aside, the following code may help for your projects, as it improves the presentation of the tables above. You will still need to update the column and row names manually, but this should paste nicely into Word or LateX!
+
+```{r warning=FALSE, message=FALSE}
+ if(!("dplyr" %in% installed.packages()[,1])) {
+ install.packages("dplyr")
+ }
+library(dplyr)
+CreateTableOne(vars=c("age","service_unit","aline_flg","day_28_flg"),strata="aline_flg",data=dat2,test=FALSE) %>% print(
+  printToggle      = FALSE,
+  showAllLevels    = TRUE,
+  cramVars         = "kon"
+) %>% 
+{data.frame(
+  variable_name    = gsub(" ", "&nbsp;", rownames(.), fixed = TRUE), ., 
+  row.names        = NULL, 
+  check.names      = FALSE, 
+  stringsAsFactors = FALSE)} %>% 
+knitr::kable()
+```
+
+
+## Other Bivariate Numerical Summaries
+
+Sometimes you may wish to display the relationships between two or more variables directly. For categorical variables this can be tricky. One common way to explore relationships between categorical variables is by producing the cross tabulated tables ("crosstabs" for short). This is mainly done via the `table` function, which can take several categorical variables, and produce the number of patients which meet criteria for those variables. For instance, looking at how an IAC was used in men and women:
+
+```{r}
+table(dat2$gender_num,dat2$aline_flg,dnn=c("Gender","IAC"))
+```
+
+we can see that an IAC was used 578 times in men (`gender_num=1`) and 447 times in women (`gender_num=0`). The raw numbers are often difficult to compare, so often the proportions are more useful. Applying `prop.table` to our existing table, and adding the argument 1 (for by row, use 2 for columns), we get the proportion of men and women who had an IAC (56% vs. 54%).
+
+```{r}
+prop.table(table(dat2$gender_num,dat2$aline_flg,dnn=c("Gender","IAC")),1)
+```
+
+A different summary for bivariate numeric data exists to present the strength of the relationship between two variables, called the correlation coefficient. There is a `cor` function in `R`, but when dealing with only two variables, it's easiest to use the `cor.test` function. Under the defaults, it computes the Pearson product-moment correlation and computes a hypothesis test to assess if there's evidence that the correlation is not zero. Other forms of correlation are computed below, including Spearman's rho and Kendall's tau. These latter methods are useful when dealing with data which is not necessarily numeric but ordered (e.g., likert based rankings on a 1-5 scale) or has outliers. Spearman's rho and Kendall's tau are rank based methods, and also have a certain degree of robustness to outliers in the data. None of these methods are robust to non-linear relationships, and it's very easy to miss a strong relationship between two variables if you rely on these methods in isolation.
+
+```{r}
+cor.test(dat2$bun_first,dat2$creatinine_first)
+cor.test(dat2$bun_first,dat2$creatinine_first,method="spearman")
+cor.test(dat2$bun_first,dat2$creatinine_first,method="kendall")
+```
+
+We can produce a scatterplot of the same two variables:
+
+```{r}
+with(dat2,plot(bun_first,creatinine_first))
+```
+
+We can see that there is indeed a positive correlation between the two variables, but the data has more variability for higher values of `bun_first` and `creatinine_first`. It's advisable to consider transformations of these two variables and be wary about using Pearson's correlation.
+
+Going beyond two dimensions can be a little tricky. Plotting on a three dimensional axis, while possible, is not ideal, and very few people can see in four dimensions.
+
+What is possible, is to use other aspects of the plot (e.g., size, color, shape, hue, transparency, location) to identify features you would like to see. For instance, in the above plot, we can add color to identify those who died:
+
+```{r}
+with(dat2,plot(bun_first,creatinine_first,col=day_28_flg,pch=19))
+```
+
+
+## Creating Categorical Variables from Continuous/Numeric Variables
+ 
+Sometimes numeric variables need to be broken down into categorical variables or factors. This can be done for a variety of reasons. There is a useful function called `cut2` in the `Hmisc` package. We install it and use it below.
+ 
+```{r warning=FALSE, message=FALSE} 
+if(!("Hmisc" %in% installed.packages()[,1])) {
+ install.packages("Hmisc",repos="https://cloud.r-project.org")
+}
+library(Hmisc)
+
+dat2$age.cat <- cut2(dat2$age,g=5)
+table(dat2$age.cat)
+
+dat2$age.cat2 <- cut2(dat2$age,c(25,40,55,70,85))
+table(dat2$age.cat2)
+```
+
+`cut2` typically needs two arguments. The first is a numeric variable to convert into a factor, and the second is how to do the splitting. Specifying `g=5` (as above for `age.cat`) breaks the numeric variable into 5 groups, with the cut points determined by attempting to make the groups as equally sized as possible. As you can see in this example, due to the odd number of patients, they are not perfectly even. The second approach requires passing the cut points. In the second example, we tell `R` to cut the data at 25, 40,.... This results in 6 groups for five cut points.
+
+### Student Question 3: 
+
+> a) Create a new variable in the `dat2` data frame called `sofa.cat` made up of four (approximately) equally sized groups for SOFA. Print the sample size in each group. Consider why the group sizes may differ significantly from each other.
+> b) For each SOFA group calculate the number of people who survived and died in the hospital and at 28 days (use the `hosp_exp_flg` and `day_28_flg` variable). Does the mortality increase or decrease as SOFA increases?
+
+```{r}
+# Students: Insert your code here
+
+dat2$sofa.cat <- cut2(dat2$sofa_first,c(7,10)) # Students please delete this line to answer the questions. It is not an answer and only exists so the Rmd file compiles.
+
+```
+
+
+
+# Plotting relationships with discrete variables
+
+Plotting discrete data can be a little tricky, but if done right can be very effective.
+For an example of why it's difficult, let's plot two discrete variables: `gender_num` and `aline_flg`.
+
+```{r}
+plot(dat2$gender_num,dat2$aline_flg,xlab="Gender",ylab="IAC")
+```
+
+Because we have converted `gender_num` and `aline_flg` to a factor, `R` gives us what is called a "Factor Plot". The area of the light grey region is proportional to the proportion of each gender who received an IAC. In this case, there is not that big of a difference between the genders.
+
+This factor plot is more useful than if we were to keep the original numerical class both these variables had. For example, if we use the original `dat` data frame both `gender_num` and `aline_flg` are numeric variables, and when we plot these, we don't end up with something very useful:
+
+```{r}
+plot(dat$gender_num,dat$aline_flg,xlab="Gender",ylab="IAC")
+```
+
+In this case we only have four different types of data points, and although we could try to jitter the values to get a slightly more useful plot, it's unlikely that this would give us a good visual interpretation of the data.
+
+Sometimes the covariate may take on more than two levels. Here, we plot the in-hospital mortality rate by the different SOFA values, and put a smooth curve through the points. This covers a more *advanced* topic, and we _*don't*_ expect you to understand the technical details of the code below.
+
+```{r}
+plot(names(table(dat2$sofa_first)),sapply(split(dat2,dat2$sofa_first),function(x) { mean(x$hosp_exp_flg==1,na.rm=T)}),xlab="SOFA",ylab="In-Hospital Mortality",cex=log(as.numeric(table(dat2$sofa_first)+1))/5)
+lines(smooth.spline(dat2$sofa_first,dat2$hosp_exp_flg==1),type="l")
+```
+
+SOFA is a validated disease severity scale for the ICU, and generally correlates strongly with mortality. Here, while the mortality rate generally increases as SOFA increases, the smooth fit isn't necessarily non-decreasing as SOFA values increase. We have added points roughly proportional to the sample size of each SOFA level, and you'll see towards the high levels of SOFA, very few patients are observed, with the second highest score (16) having a 100% *survival* rate (but with only *one* patient).
+
+For binary outcomes, it is often useful to plot the proportion of patients with the outcome (e.g., mortality rate) by the different levels of a covariate of interest. Because sample size plays such an important role in the uncertainty associated with these estimate proportions, it seems appropriate to include an estimate of our uncertainty via a confidence interval.
+
+In the `MIMICbook` package you installed above, there is a `plot_prop_by_level` which can plot the proportion of patients with an outcome by one or two factor variables. For instance, if we wished to plot the in hospital mortality rate by the SOFA categories (`sofa.cat`) we defined above, we can using:
+
+```{r}
+plot_prop_by_level(dat2,"sofa.cat","hosp_exp_flg")
+```
+
+Often it's useful to consider more than one covariate at a time to assess confounding and effect modification. Here, if we wished to examine `sofa.cat` and `gender_num` at the same time, we add `factor.var2="gender_num"` to our previous use of `plot_prop_by_level`.
+
+```{r}
+plot_prop_by_level(dat2,"sofa.cat","hosp_exp_flg",factor.var2="gender_num")
+```
+
+Here we see that in hospital mortality is higher in women for the SOFA groups we have considered, suggesting that it might be an important confounder for this outcome and variable.
+
+### Student Question 4:
+
+> a) Make a factor plot of the categories of SOFA we created (`sofa.cat`) and hospital mortality (`hosp_exp_flg`). Does the trend align with your expectations based on the non-graphical EDA performer earlier?
+> b) Use `plot_prop_by_level` using `sofa.cat` as the covariate of interest and 28 day mortality (`day_28_flg`) as the outcome.
+> c) Include the main covariate of interest for this study `aline_flg` as the second factor variable and extend part b).
+> d) Repeat part c), but swap the IAC and SOFA arguments. Consider how the different depictions of the underlying data could better support different objectives.
+> e) Create a new variable, `sofa.cat2`, with cut points at 3, 6, 9, 12. Repeat parts b) and c).
+> f) Make a plot of the 28 day mortality outcome, `aline_flg` and `chf_flg`. Ignoring the statistical significance (i.e., do not perform any formal testing), consider why this plot may suggest the complexity of any potential effect of an IAC on mortality.
+
+```{r}
+# Students: put your code here
+
+```
+
+
+## Odds ratios
+
+*Note: For those with a programming background, `R` indexes vectors starting from 1.*
+
+As previously discussed, odds ratios are very commonly used to communicate relative effect sizes for binary outcomes, particularly in observational data. Calculation is straightforward, but often misunderstood. We start with a 2 x 2 table. Below is the 2 x 2 table for in hospital mortality and having an arterial line. I've assigned it to a new variable called `egtab`.
+
+```{r}
+egtab <- table(dat2$aline_flg,dat2$hosp_exp_flg,dnn=c("IAC","Hosp. Mort"))
+egtab
+```
+
+It's hard to interpret the raw counts, so we'll use `prop.table` to compute the proportions who died and lived by row (margin 1, IAC).
+
+```{r}
+pegtab <- prop.table(egtab,1)
+pegtab
+```
+
+Odds are $\frac{p}{1-p}$ where $p$ is the proportion with the outcome (death) in a group of patients, which is in the second column. We can index the above table by column (`tab[,idx]` will retrieve column `idx` from the table [or matrix] `tab`) to compute the odds in each group.
+
+```{r}
+Oddsegtab <-pegtab[,2]/pegtab[,1]
+Oddsegtab
+```
+
+Now we have the odds of the outcome in those who got an IAC `1` and those who didn't `0`. We need to pick a reference group. We'll calculate it both ways, but let's assume we want those without an IAC to be the reference:
+
+```{r}
+Oddsegtab[2]/Oddsegtab[1]
+```
+
+If we wanted those with an IAC to be the reference group:
+
+```{r}
+Oddsegtab[1]/Oddsegtab[2]
+```
+
+If we wanted to plot this information, and include a confidence interval, we can use the `plot_OR_by_level` from the `MIMICbook` package:
+
+```{r}
+plot_OR_by_level(dat2,"aline_flg","hosp_exp_flg")
+```
+
+This by default includes an odds ratio of 1 indicating the reference group. To remove this point use the `include.ref.group.effect` argument:
+
+```{r}
+plot_OR_by_level(dat2,"aline_flg","hosp_exp_flg",include.ref.group.effect = FALSE)
+```
+
+You can also look at more than one covariate at a time. For instance, looking at `aline_flg` and the `gender_num` variable:
+
+```{r}
+plot_OR_by_level(dat2,"gender_num","hosp_exp_flg",factor.var2="aline_flg",include.ref.group.effect = TRUE)
+```
+
+Here we have computed the odds ratio for an IAC (vs no IAC) separately for men and women.
+
+### Student Question 5:
+
+> a) Create a 2 x 2 table with `chf_flg` and the variable `day_28_flg` outcome and assign it to a variable called `tab22`.
+> b) Compute the odds ratio for having CHF vs. not having CHF using this table.
+> c) Construct a plot of the odds ratios and 95\% confidence intervals using the `plot_OR_by_level` function for CHF and 28 day mortality.
+> d) Create a 4 x 2 table with the `sofa.cat` variable and the `day_28_flg` outcome and assign it to a variable called `tab42`.
+> e) Pick and define a reference group for `sofa.cat`, and compute the odds ratio(s) for the other levels of `sofa.cat` using `day_28_flg` as your outcome.
+> f) Construct a plot of the odds ratios and 95\% confidence intervals using the `plot_OR_by_level` function for the SOFA categories and 28 day mortality. Make sure the reference groups are the same as parts d) and e). Look into the `relevel` function in `R` or the `ref.group` argument in the `plot_OR_by_level` function.
+> g) Construct a plot looking at the 28 day mortality outcome, and the two variables we considered here, `sofa.cat` and `chf_flg`. Exchange the variables assigned to the factor.var1 and factor.var2 arguments, and consider briefly two reasons why you might prefer one plot over the other, and what you would conclude from your chosen plot.
+
+```{r}
+# Student: put your code here
+
+```
