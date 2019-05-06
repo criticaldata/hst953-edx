@@ -1,5 +1,5 @@
 ---
-title: 'HST.953 EdX Workshop: Exploratory Data Analysis'
+title: 'HST.953x Workshop 2.07: Exploratory Data Analysis'
 author: "Your Name Here"
 date: "January 1, 1900"
 output:
