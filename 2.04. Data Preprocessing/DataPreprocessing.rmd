@@ -35,7 +35,7 @@ Aim: This exercise involves combining the separate output datasets exported from
 
 To ensure that the associated observations or rows from the different datasets match up, the right column ID must be used. For example, in MIMIC subject_id is used to identify each individual patient, so includes their date of birth (DOB), date of death (DOD) and various other clinical detail and laboratory values. Likewise, the hospital admission ID, hadm_id, is used to specifically identify various events and outcomes from an unique hospital admission; and is also in turn associated with the subject_id of the patient who was involved in that particular hospital admission. Tables pulled from MIMIC can have one or more ID columns. The different tables exported from MIMIC may share some ID columns, which allows us to 'merge' them together, matching up the rows correctly using the unique ID values in their shared ID columns.
 
-To demonstrate this with MIMIC data, a simple SQL query is constructed to extract some data from: "admissions.csv" and "icustays.csv". We will use these extracted files to show how to merge datasets in R.
+To demonstrate this with MIMIC data, a simple SQL query is constructed to extract some data from: "admissions.csv" and "icustays.csv".  We will use these extracted files to show how to merge datasets in R.
 
 1. SQL queries:
 
@@ -50,6 +50,9 @@ Extract the datasets with each one of the following lines of code in SQL:
 ```
 
 Save admissions.csv and icustays.csv in your desktop folder: "MIMIC_data_files" 
+
+Observation: In case you will not use SQL, you can simply download the tables from the source MIMIC-III demo version above mentioned.
+
 
 2. R code: Demonstrating data integration
 
