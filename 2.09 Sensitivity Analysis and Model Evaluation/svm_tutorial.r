@@ -44,7 +44,7 @@ confusionMatrix(test_pred,testing$V14)
 
 # Part 2 - Model tuning
 # Choose the value of C leading to best model performance
-grid <- expand.grid(C = c(0,0.01, 0.05, 0.1, 0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2,5))
+grid <- expand.grid(C = c(0.001, 0.01, 0.05, 0.1, 0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2,5))
 set.seed(3233)
 svm_Linear_Grid <- train(V14 ~., data = training, method = "svmLinear",
                            trControl=trctrl,
