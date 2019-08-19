@@ -64,7 +64,7 @@ For this workshop we will use data from a study that examined the effect of indw
 
 ```{r}
 # If the following command does not work for you, please download the data file from Physionet at the URL below, run file.choose(), locate your downloaded CSV file, and replace read.csv(url) with read.csv("file_path") where file_path is the output from file.choose().
-url <- "http://physionet.org/physiobank/database/mimic2-iaccd/full_cohort_data.csv"
+url <- "https://github.com/criticaldata/hst953-edx/blob/master/data/aline_full_cohort_data.csv"
 dat <- read.csv(url)
 
 # Public dataset has NA values for variables required to complete workshop
