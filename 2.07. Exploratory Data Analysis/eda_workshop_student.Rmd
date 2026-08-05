@@ -63,9 +63,13 @@ All too often the success/failure of an analysis is determined from a single num
 For this workshop we will use data from a study that examined the effect of indwelling arterial catheters (aka IAC or aline) on 28 day mortality in intensive care unit (ICU) patients on mechanical ventilation during the first day of ICU admission. The data originates from MIMIC II v2.6. The data is ready for exploratory data analysis (the data extraction and cleaning have already been completed), and contained in a comma separated value (.csv) file generated after this process and stored on Physionet. Start by loading the data file from Physionet into a data frame called `dat`:
 
 ```{r}
-# If the following command does not work for you, please download the data file from Physionet at the URL below, run file.choose(), locate your downloaded CSV file, and replace read.csv(url) with read.csv("file_path") where file_path is the output from file.choose().
-url <- "https://github.com/criticaldata/hst953-edx/blob/master/data/aline_full_cohort_data.csv"
-dat <- read.csv(url)
+# NOTE: the original URL in this workshop points at a GitHub *blob* page, which
+# returns HTML rather than CSV. Use the local copy of the file (or the raw URL).
+csv <- "../data/aline_full_cohort_data.csv"
+if (!file.exists(csv)) {
+  csv <- "https://raw.githubusercontent.com/criticaldata/hst953-edx/master/data/aline_full_cohort_data.csv"
+}
+dat <- read.csv(csv)
 
 # Public dataset has NA values for variables required to complete workshop
 # Replace NA values with defaults since dataset only intended for teaching
@@ -102,17 +106,23 @@ ncol(dat)
 
 This should be what you're expecting (`1776` and `46`). If it's not, this could indicate a loading error, or a problem with the data extraction.
 
-As you will note, many of the `flg` variables listed in the summary output above, are constrained by 0 and 1. This is because they have a binary encoding (usually 1 if present, and 0 if not). Although not necessary in this particular instance, it is sometimes useful to encode these types of variables as factors. The function `convert.bin.fac` will do this, and we'll use it to create a new data frame called `dat2`, and call the summary function on the new data frame. We first need to load/install two packages (`devtools` and `MIMICbook`).
+As you will note, many of the `flg` variables listed in the summary output above, are constrained by 0 and 1. This is because they have a binary encoding (usually 1 if present, and 0 if not). Although not necessary in this particular instance, it is sometimes useful to encode these types of variables as factors. The function `convert.bin.fac` will do this, and we'll use it to create a new data frame called `dat2`, and call the summary function on the new data frame. We first need to load/install two packages (`remotes` and `MIMICbook`).
 
 ```{r include=TRUE}
-if(!("devtools" %in% installed.packages()[,1])) {
- install.packages("devtools",repos="https://cloud.r-project.org")
+# `remotes` is used here instead of `devtools`; it provides install_github()
+# without devtools' large set of build-time dependencies.
+if(!("remotes" %in% installed.packages()[,1])) {
+ install.packages("remotes",repos="https://cloud.r-project.org")
 }
-library(devtools)
 if(!("MIMICbook" %in% installed.packages()[,1])) {
- install_github("jraffa/MIMICbook")
+ remotes::install_github("jraffa/MIMICbook")
 }
 library(MIMICbook)
+# MIMICbook has not been updated since 2018, and its plotting functions call
+# dplyr and ggplot2 functions that are now defunct (mutate_, group_by_,
+# rename_, group_indices, aes_string). Sourcing this file defines corrected
+# versions that take precedence. See the file header for details.
+source("mimicbook_dplyr_fix.R")
 ```
 
 The `MIMICbook` package provides some useful functions written for the textbook that we will use throughout some of the workshops. It installs via GitHub.
